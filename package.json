@@ -1,0 +1,77 @@
+{
+  "name": "dsh-env",
+  "version": "0.4.0",
+  "description": "DeepSeek Harness 的环境变量 / 密钥管理插件（AEmbers fork）：托管 ~/.dsh/env.yml 的密钥区块，支持普通值与 js: 前缀表达式，保存后写入当前进程环境变量。自带「设置 → 环境变量 / 密钥管理」页，并兼容官方插件页的详情内联表单。",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "engines": {
+      "dsh": ">=0.1.7-rc.2"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.4",
+    "@hyzyn/dsh-kit": "0.5.1",
+    "js-yaml": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.1.7-rc.2",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@types/node": "^22.20.0",
+    "react": "^18.2.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.8"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "files": [
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AEmbers/dsh-env.git"
+  },
+  "homepage": "https://github.com/AEmbers/dsh-env#readme",
+  "bugs": {
+    "url": "https://github.com/AEmbers/dsh-env/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
+  }
+}

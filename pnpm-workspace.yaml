@@ -1,0 +1,7 @@
+packages:
+  - .
+
+# 本包只声明 @deepseek-ai/dsh 作为「兼容标记」：dsh 的插件兼容闸门直接读
+# package.json 的 peerDependencies（见 dsh-app-boot 的 plugin-compatibility），
+# 不需要把它装进 node_modules。关掉自动安装，免得把一个旧的 dsh 拉进来。
+autoInstallPeers: false

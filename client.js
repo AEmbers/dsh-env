@@ -1,0 +1,468 @@
+/* eslint-disable */
+/**
+ * dsh-env（AEmbers fork，源自 @hyzyn/dsh-env）— 浏览器半体：「环境变量 / 密钥管理」配置界面。
+ * 同一份代码注册多个插槽以跨版本兼容：
+ *   - settings.section id `env-secrets`：**本 fork 自带**的「设置 → 环境变量 / 密钥管理」页。
+ *     官方 `settings.section` 扩展点，与「通用设置 / 内置插件 / Agent 预设」同级；不依赖任何
+ *     外部宿主页（上游把这一项交给 @hyzyn/dsh-kit-settings，没装就整行消失）。
+ *   - 0.2.0-rc.1 起 plugins.bundle.config（官方插件页「说明」下方内联，同一份表单）；
+ *     旧宿主回退到 0.1.6 线的 plugins.row.config（侧边栏「插件」页里该行的「>」子页）；
+ *   - DSH ≤0.1.5 退役的 settings.plugin.item（老宿主上的设置页卡片）。
+ * 纯前端 React 卡片，宿主经 client-modules 的 combo 路由按 boot graph 下发。
+ */
+window.__ModuleLoader__.load({
+  id: 'dsh-env',
+  factory: (require) => {
+    const exports = {}
+
+    const React = require('react')
+    const { jsx, jsxs } = require('react/jsx-runtime')
+
+    /* ================================ CSS ================================ */
+
+    const CSS = [
+      '.env_pageHost{display:block}',
+      '.env_pluginCard{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;transition:border-color .16s,background .16s}',
+      '.env_pluginCard:hover{border-color:var(--dsw-alias-label-dimmed)}',
+      '.env_pluginCardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}',
+      '.env_cardHeader{appearance:none;width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;display:flex;align-items:center;gap:12px;padding:14px 16px}',
+      '.env_cardHeader:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}',
+      '.env_cardHeadText{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
+      '.env_cardName{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600}',
+      '.dshkit_badge{flex:none;margin-left:auto;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:16px;letter-spacing:.02em;color:var(--dsw-alias-label-dimmed);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1)}',
+      '.env_cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px}',
+      '.env_chevron{flex:none;color:var(--dsw-alias-label-tertiary);transition:transform .16s}',
+      '.env_pluginCardOpen .env_chevron{transform:rotate(180deg)}',
+      '.env_cardBody{padding:2px 16px 16px}',
+      '.env_panel{display:flex;flex-direction:column;gap:12px;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);box-sizing:border-box}',
+      '.env_panelHeader{display:flex;align-items:center;gap:10px;flex:none}',
+      '.env_panelTitle{margin:0;font-size:15px;font-weight:700;white-space:nowrap;flex:1}',
+      '.env_subtitle{color:var(--dsw-alias-label-tertiary);font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}',
+      '.env_toolbar{display:flex;align-items:center;gap:8px;flex:none}',
+      '.env_toolbarSpacer{flex:1}',
+      '.env_btn{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-info-fill);border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}',
+      '.env_btn:hover:not(:disabled){background:var(--dsw-alias-button-info-hover)}',
+      '.env_btn:disabled{opacity:.5;cursor:default}',
+      '.env_btnGhost{color:var(--dsw-alias-label-primary);background:0 0;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}',
+      '.env_btnGhost:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
+      '.env_btnDanger{color:var(--dsw-alias-state-error-primary)}',
+      '.env_list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}',
+      '.env_row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(180px,2fr) auto auto;gap:8px;align-items:center;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;padding:8px 10px}',
+      '.env_input{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;padding:6px 10px;font-family:inherit;font-size:13px;box-sizing:border-box;width:100%}',
+      '.env_input:focus{border-color:var(--dsw-alias-state-business-primary)}',
+      '.env_input::placeholder{color:var(--dsw-alias-label-tertiary)}',
+      '.env_check{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap}',
+      '.env_empty,.env_loading{text-align:center;color:var(--dsw-alias-label-tertiary);padding:24px 12px;font-size:12.5px}',
+      '.env_error{color:var(--dsw-alias-state-error-primary);font-size:12px;margin:0;white-space:pre-wrap}',
+      '.env_ok{color:var(--dsw-alias-state-success-primary);font-size:12px;margin:0}',
+      '.env_settingSection{display:flex;flex-direction:column;gap:12px;max-width:760px;color:var(--dsw-alias-label-primary)}',
+      '.env_settingHead{display:flex;flex-direction:column;gap:4px}',
+      '.env_settingTitle{margin:0;font-size:18px;font-weight:600}',
+      '.env_settingIntro{margin:0;font-size:13px;color:var(--dsw-alias-label-tertiary)}',
+      '.env_settingBody{min-width:0}',
+    ].join('\n')
+
+    let styleEl
+    function ensureStyle() {
+      if (document.getElementById('dsh-env-style')) return
+      styleEl = document.createElement('style')
+      styleEl.id = 'dsh-env-style'
+      styleEl.textContent = CSS
+      document.head.appendChild(styleEl)
+    }
+
+    /* ================================ 国际化 ================================ */
+
+    /*
+     * 界面文案走宿主 `@deepseek-ai/dsh-client-locale` 的目录（方案见 docs/i18n.md）。
+     * 下面这一对目录由 `scripts/check-i18n.mjs` 静态校验：键集必须与英文一一对应、
+     * `{name}` 占位符两边一致、代码里 `t('…')` 用到的键必须在这里有定义。
+     * 目录**内联在 client.js 里**（不是 client-src/）：本包没有构建步骤，client.js 就是源；
+     * 而且一旦凭空建出 client-src/，仓库级「宿主地址来源」静态规则会停止覆盖 client.js。
+     */
+    /* ==== dsh-i18n:begin ==== */
+    const I18N_NS = 'env'
+    const I18N_ZH = {
+      'card.name': '环境变量 / 密钥管理',
+      'card.desc': '管理环境变量与密钥：普通值或 js: 表达式；密钥值存入官方凭据存储，保存后写入 process.env。',
+      'section.title': '环境变量 / 密钥管理',
+      'section.intro': '管理 ~/.dsh/env.yml 的托管区块：普通值或 js: 表达式；密钥值存入官方凭据存储，保存后写入 process.env。离开本页会丢弃未保存的改动。',
+      'panel.title': '环境变量列表',
+      'btn.add': '+ 新增',
+      'btn.save': '保存',
+      'btn.saving': '保存中…',
+      'btn.remove': '删除',
+      'check.secret': '密钥',
+      'list.loading': '加载中…',
+      'list.empty': '暂无环境变量，点击“+ 新增”添加。',
+      'placeholder.secretStored': '已存入官方凭据存储，留空保持不变',
+      'placeholder.secretSaved': '已保存，留空保存＝保持不变',
+      'msg.saved': '已保存',
+      'msg.savedApplied': '已保存，并已写入 process.env',
+    }
+    const I18N_EN = {
+      'card.name': 'Environment & secrets',
+      'card.desc': 'Manage environment variables and secrets: plain values or js: expressions; secret values go into the official credential store and are written to process.env on save.',
+      'section.title': 'Environment & secrets',
+      'section.intro': 'Manage the managed block of ~/.dsh/env.yml: plain values or js: expressions; secret values go into the official credential store and are written to process.env on save. Leaving this page discards unsaved edits.',
+      'panel.title': 'Environment variables',
+      'btn.add': '+ Add',
+      'btn.save': 'Save',
+      'btn.saving': 'Saving…',
+      'btn.remove': 'Remove',
+      'check.secret': 'Secret',
+      'list.loading': 'Loading…',
+      'list.empty': 'No environment variables yet — click “+ Add”.',
+      'placeholder.secretStored': 'Stored in the official credential store; leave blank to keep it',
+      'placeholder.secretSaved': 'Saved; leave blank to keep it',
+      'msg.saved': 'Saved',
+      'msg.savedApplied': 'Saved and written to process.env',
+    }
+    /* ==== dsh-i18n:end ==== */
+
+    /** 占位符替换：`{name}` → params.name（缺参留空，不抛错——文案不该打死界面）。 */
+    function i18nFormat(text, params) {
+      if (params === undefined) return text
+      return String(text).replace(/\{(\w+)\}/g, (_match, name) => (params[name] === undefined ? '' : String(params[name])))
+    }
+
+    /** 中文兜底：老宿主（DSH ≤0.1.5）没有 locale 服务时，界面不能变成一串键名。 */
+    function i18nFallback(key, params) {
+      return i18nFormat(I18N_ZH[key] !== undefined ? I18N_ZH[key] : key, params)
+    }
+
+    let t = i18nFallback
+
+    /**
+     * 注册目录并绑定翻译函数。**动态 inject**：老宿主上回调永不触发、`t` 保持中文兜底；
+     * 写成静态 `inject: ['locale']` 会让整张卡片在老宿主上根本不挂。
+     *
+     * 语言切换不用自己订阅：插槽 outlet 随 locale revision 重渲染（renderer 的
+     * `useLocaleRevision`），而 `bind()` 返回的翻译函数在**调用时**读当前语言。
+     */
+    function installI18n(ctx) {
+      ctx.inject(['locale'], (i18nCtx) => {
+        const disposeZh = i18nCtx.locale.register(I18N_NS, 'zh', I18N_ZH)
+        const disposeEn = i18nCtx.locale.register(I18N_NS, 'en', I18N_EN)
+        t = i18nCtx.locale.bind(I18N_NS)
+        return () => {
+          disposeEn()
+          disposeZh()
+          t = i18nFallback
+        }
+      })
+    }
+
+    /* ================================ API ================================ */
+
+    async function api(path, options) {
+      const response = await fetch(path, options)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || ('HTTP ' + response.status))
+      }
+      return data
+    }
+
+    /* ================================ 设置卡片 ================================ */
+
+    const CHEVRON_PATH = 'M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 9.13382 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z'
+
+    function EnvSettingsCard(props) {
+      // DSH ≥0.1.6 的插件配置页把同一条目按 view 渲染两次：summary 一句话摘要、page 完整表单。
+      // 旧版（≤0.1.5）的 settings.plugin.item 卡片不带 view，走原有可折叠卡片分支。
+      const view = props && props.view
+      const pageView = view === 'page'
+      const [open, setOpen] = React.useState(pageView)
+      const [entries, setEntries] = React.useState([])
+      const [file, setFile] = React.useState('')
+      const [error, setError] = React.useState('')
+      const [ok, setOk] = React.useState('')
+      const [loading, setLoading] = React.useState(false)
+      const [saving, setSaving] = React.useState(false)
+
+      const load = React.useCallback(async () => {
+        setLoading(true)
+        setError('')
+        setOk('')
+        try {
+          const data = await api('/api/dsh-env/list')
+          setEntries(data.entries || [])
+          setFile(data.file || '')
+        } catch (err) {
+          setError(err.message)
+        } finally {
+          setLoading(false)
+        }
+      }, [])
+
+      React.useEffect(() => {
+        if (open) load()
+      }, [open, load])
+
+      const updateEntry = (index, patch) => {
+        setEntries((current) => current.map((entry, i) => i === index ? { ...entry, ...patch } : entry))
+      }
+
+      const addEntry = () => {
+        setEntries((current) => [...current, { key: '', value: '', secret: false }])
+      }
+
+      const removeEntry = (index) => {
+        setEntries((current) => current.filter((_, i) => i !== index))
+      }
+
+      const save = async () => {
+        setSaving(true)
+        setError('')
+        setOk('')
+        try {
+          const data = await api('/api/dsh-env/save', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ entries }),
+          })
+          setEntries(data.entries || entries)
+          setFile(data.file || file)
+          setOk(data.applied ? t('msg.savedApplied') : t('msg.saved'))
+          if (Array.isArray(data.warnings) && data.warnings.length > 0) setError(data.warnings.join('\n'))
+        } catch (err) {
+          setError(err.message)
+        } finally {
+          setSaving(false)
+        }
+      }
+
+      if (view === 'summary') {
+        return t('card.desc')
+      }
+
+      return jsxs(pageView ? 'div' : 'li', {
+        className: pageView ? 'env_pageHost' : (open ? 'env_pluginCard env_pluginCardOpen' : 'env_pluginCard'),
+        children: [
+          pageView ? null : jsxs('button', {
+            type: 'button',
+            className: 'env_cardHeader',
+            'aria-expanded': open,
+            onClick: () => setOpen((current) => !current),
+            children: [
+              jsxs('span', {
+                className: 'env_cardHeadText',
+                children: [
+                  jsx('span', { className: 'env_cardName', children: t('card.name') }),
+                  jsx('span', { className: 'env_cardDescription', children: t('card.desc') }),
+                ],
+              }),
+              jsx('span', { className: 'dshkit_badge', children: 'Kit' }),
+              jsx('svg', {
+                width: '14',
+                height: '14',
+                viewBox: '0 0 14 14',
+                fill: 'none',
+                xmlns: 'http://www.w3.org/2000/svg',
+                className: 'env_chevron',
+                children: jsx('path', { d: CHEVRON_PATH, fill: 'currentColor' }),
+              }),
+            ],
+          }),
+          (pageView || open) ? jsx('div', {
+            className: 'env_cardBody',
+            children: jsxs('div', {
+              className: 'env_panel',
+              children: [
+                jsxs('div', {
+                  className: 'env_panelHeader',
+                  children: [
+                    jsx('span', { className: 'env_panelTitle', children: t('panel.title') }),
+                    jsx('span', { className: 'env_subtitle', children: file }),
+                    jsx('div', { className: 'env_toolbarSpacer' }),
+                    jsx('button', {
+                      type: 'button',
+                      className: 'env_btnGhost',
+                      onClick: addEntry,
+                      children: t('btn.add'),
+                    }),
+                    jsx('button', {
+                      type: 'button',
+                      className: 'env_btn',
+                      disabled: saving,
+                      onClick: save,
+                      children: saving ? t('btn.saving') : t('btn.save'),
+                    }),
+                  ],
+                }),
+                loading ? jsx('div', { className: 'env_loading', children: t('list.loading') }) : null,
+                error ? jsx('p', { className: 'env_error', children: error }) : null,
+                ok ? jsx('p', { className: 'env_ok', children: ok }) : null,
+                entries.length === 0 && !loading ? jsx('div', { className: 'env_empty', children: t('list.empty') }) : null,
+                entries.length > 0 ? jsx('div', {
+                  className: 'env_list',
+                  children: entries.map((entry, index) => jsxs('div', {
+                    className: 'env_row',
+                    key: 'env-row-' + index,
+                    children: [
+                      jsx('input', {
+                        className: 'env_input',
+                        placeholder: 'KEY',
+                        value: entry.key,
+                        onChange: (event) => updateEntry(index, { key: event.target.value }),
+                      }),
+                      jsx('input', {
+                        className: 'env_input',
+                        placeholder: entry.secret && entry.value == null
+                          ? (entry.storage === 'refs' ? t('placeholder.secretStored') : t('placeholder.secretSaved'))
+                          : 'value 或 js:process.env.XXX',
+                        type: entry.secret ? 'password' : 'text',
+                        value: entry.value ?? '',
+                        onChange: (event) => updateEntry(index, { value: event.target.value }),
+                      }),
+                      jsxs('label', {
+                        className: 'env_check',
+                        children: [
+                          jsx('input', {
+                            type: 'checkbox',
+                            checked: entry.secret === true,
+                            onChange: (event) => updateEntry(index, { secret: event.target.checked }),
+                          }),
+                          t('check.secret'),
+                        ],
+                      }),
+                      jsx('button', {
+                        type: 'button',
+                        className: 'env_btnGhost env_btnDanger',
+                        onClick: () => removeEntry(index),
+                        children: t('btn.remove'),
+                      }),
+                    ],
+                  }, 'env-row-' + index)),
+                }) : null,
+              ],
+            }),
+          }) : null,
+        ],
+      })
+    }
+
+    /* ============================ 设置大类页面 ============================ */
+
+    /**
+     * 「设置」里的一行大类（`settings.section`），与「通用设置 / 内置插件 / Agent 预设」同级。
+     *
+     * 这里直接渲染 `EnvSettingsCard` 的 `view: 'page'` 形态，而不是像上游那样把卡片注册进
+     * 一个子 slot：本 fork 是独立仓库、只有这一张表单，少一层「声明 → 等待 → 注册 → 重渲染」
+     * 的时序，也没有和 @hyzyn/dsh-kit-settings 抢 `settings.kit.item` 声明的风险。
+     */
+    function EnvSettingsSection() {
+      return jsxs('section', {
+        className: 'env_settingSection',
+        children: [
+          jsxs('header', {
+            className: 'env_settingHead',
+            children: [
+              jsx('h2', { className: 'env_settingTitle', children: t('section.title') }),
+              jsx('p', { className: 'env_settingIntro', children: t('section.intro') }),
+            ],
+          }),
+          jsx('div', {
+            className: 'env_settingBody',
+            children: jsx(EnvSettingsCard, { view: 'page' }),
+          }),
+        ],
+      })
+    }
+
+    /* ================================ 插件入口 ================================ */
+
+    exports.inject = ['slots']
+
+    /**
+     * DSH ≥0.1.6-alpha.2 的行配置 key：`<bundle 包名>#<行 id>`，行 id 取自 bundle 的
+     * cordis.patch.yml。本 fork 是独立仓库、独立安装，bundle 包名就是 `dsh-env`；
+     * 上游那份的 `@hyzyn/dsh-all` 聚合 key 在这里没有对应物，不再注册。
+     */
+    const ROW_CONFIG_KEYS = [
+      'dsh-env#env-manager',
+    ]
+
+    exports.apply = (ctx) => {
+      installI18n(ctx)
+      ctx.effect(() => {
+        ensureStyle()
+        return () => {
+          styleEl?.remove()
+          styleEl = undefined
+        }
+      })
+      /*
+       * 设置面：0.2.0-rc.1 起挂 `plugins.bundle.config`——key 是 **bundle 包名**，管理器的插件
+       * 详情页把它渲染在「说明」正下方；`plugins.row.config` 是 per-row 的「>」子页。
+       *
+       * 两条硬约束（第一条踩过坑，见下）：
+       *   ① `plugins.bundle.config` 的 key 是**共享命名空间**：同一个 key 只能有一个注册者，
+       *      重复注册**直接抛错**（`keyed slot ... already has an entry`），而客户端 `apply`
+       *      抛错 = 整个插件起不来（实测：八个 kit 插件抢同一个聚合 key，启动页直接变
+       *      「Failed to load plugins」）（D158）。
+       *   ② 内联位可用时，本包自己的 bundle 不再注册 row 槽（同一份表单两个入口会让人以为
+       *      有两套设置）。旧宿主（bundle 槽不存在，0.1.6 线）回退注册 row 槽，功能一点不减。
+       * 就绪顺序不敏感：任一侧先到都收敛到「内联优先」（后到的本包 row 注册会被撤掉）。
+       */
+      const AGGREGATE_BUNDLE = '@hyzyn/dsh-all'
+      const BUNDLE_NAMES = [...new Set(ROW_CONFIG_KEYS.map((key) => key.split('#')[0]))]
+      const OWN_BUNDLE = BUNDLE_NAMES.find((name) => name !== AGGREGATE_BUNDLE) ?? BUNDLE_NAMES[0]
+      let bundleConfigLive = false
+      const disposeOwnRowConfigs = []
+      if (OWN_BUNDLE !== undefined) {
+        ctx.slots.inject('plugins.bundle.config', () => {
+          bundleConfigLive = true
+          while (disposeOwnRowConfigs.length > 0) {
+            const disposeRow = disposeOwnRowConfigs.pop()
+            if (typeof disposeRow === 'function') disposeRow()
+          }
+          return ctx.slots.register({
+            name: 'plugins.bundle.config',
+            key: OWN_BUNDLE,
+          }, EnvSettingsCard)
+        })
+      }
+      for (const key of ROW_CONFIG_KEYS) {
+        ctx.slots.inject('plugins.row.config', () => {
+          const own = key.split('#')[0] === OWN_BUNDLE
+          if (own && bundleConfigLive) return undefined
+          const disposeRow = ctx.slots.register({
+            name: 'plugins.row.config',
+            key,
+          }, EnvSettingsCard)
+          if (own) disposeOwnRowConfigs.push(disposeRow)
+          return disposeRow
+        })
+      }
+      // ★ 本 fork 的核心兼容改动：自带一行设置大类，任何宿主上都能看见配置入口。
+      // 官方 `settings.section` 扩展点（「通用设置 / 模型 / 内置插件 / Agent 预设」同款），
+      // 15 = 官方「内置插件」，16 = @hyzyn/dsh-kit-settings 的「插件配置」，20 = 「Agent 预设」；
+      // 17 让本行紧随其后。上游把这一项外包给 @hyzyn/dsh-kit-settings，没装那包时整行消失——
+      // 那正是「设置里找不到 ENV」的根因，这里自给自足。
+      ctx.slots.inject('settings.section', () => ctx.slots.register({
+        name: 'settings.section',
+        id: 'env-secrets',
+        order: 17,
+        label: () => t('section.title'),
+      }, EnvSettingsSection))
+      // 兼容上游 kit 页：装了 @hyzyn/dsh-kit-settings 时，同一张卡片仍出现在它的「插件配置」行里。
+      // 不传 view，走可折叠卡片形态（那是那一页的视觉约定）。
+      ctx.slots.inject('settings.kit.item', () => ctx.slots.register({
+        name: 'settings.kit.item',
+        id: 'env-manager',
+        order: 10,
+        label: () => t('card.name'),
+      }, EnvSettingsCard))
+      // DSH ≤0.1.5：设置 → 插件 的「插件配置」标签页，keyed 插槽按 settings 命名空间派发。
+      ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
+        name: 'settings.plugin.item',
+        key: 'env-manager',
+        order: 98,
+      }, EnvSettingsCard))
+    }
+
+    return exports
+  },
+})
