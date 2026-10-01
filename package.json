@@ -41,13 +41,17 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
     "@types/node": "^22.20.0",
+    "@types/react-dom": "^18.2.0",
     "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "typescript": "~5.9.3",
     "vitest": "^4.1.8"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify:client": "node scripts/verify-client.mjs",
+    "check": "pnpm run build && pnpm run typecheck && pnpm run verify:client && pnpm test",
     "test": "vitest run"
   },
   "files": [
